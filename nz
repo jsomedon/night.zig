@@ -20,7 +20,7 @@ function script_echo {
 }
 
 function check_deps {
-    local deps=("curl" "jq" "tar")
+    local deps=("curl" "jq" "basename" "tar")
     for dep in "${deps[@]}"; do
         if check_dep "$dep"; then
             :
@@ -92,7 +92,7 @@ function fetch_tar {
         exit "$ARCH_OS_ERR"
     fi
     local tar_url="$(curl "https://ziglang.org/download/index.json" | jq -r ".master.\"$arch_os\".tarball")"
-    local tar_name="night.zig.tar"
+    local tar_name="$(basename "$tar_url")"
     local temp_dir="$(mktempdir)"
 
     curl --output-dir "$temp_dir" --output "$tar_name" "$tar_url"

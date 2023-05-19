@@ -14,10 +14,11 @@ nz
 
 ### Dependencies
 
+* `bash`
 * `curl`
 * `jq`
+* `basename`
 * `tar`
-* `bash`
 
 ### Installation
 
