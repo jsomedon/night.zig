@@ -40,7 +40,7 @@ I just started looking into `zig` yesterday, and I couldn't believe fine folks o
 
 I didn't fully test architecture & os detection logic, only on `x86_64-linux` and `aarch64-macos`.
 
-I may rewrite this little tool in `zig` when I get comfortable enough with `zig`, so that you don't need dependencies and what not.
+I may rewrite this little tool in `zig` when I get comfortable enough with `zig`, so that you don't need dependencies and what not. But no guarantee.
 
 ### License
 
