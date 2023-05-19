@@ -3,6 +3,8 @@
 set -e
 set -o pipefail
 
+VERSION="0.0.0"
+
 DEP_ERR=100
 
 #https://stackoverflow.com/a/33297950
@@ -100,16 +102,56 @@ function fetch_tar {
     echo "$temp_dir/$tar_name"
 }
 
+
+NZ_DIR="$HOME/.night.zig"
+
 function unpack_tar {
     local tar_path="$1"
-    local install_dir="$HOME/.night.zig"
-    mkdir -p "$install_dir"
+    mkdir -p "$NZ_DIR"
 
-    tar -xvzf "$tar_path" -C "$install_dir"
+    local containing_dir="$(tar -tf "$tar_path" | head -1)"
+    local new_install_dir_name="${containing_dir%/}"
+    tar -xzf "$tar_path" -C "$NZ_DIR"
+    echo "$new_install_dir_name"
+}
+
+function config_latest {
+    local new_install_dir_name="$1"
+    (
+        cd "$NZ_DIR"
+        rm -f latest
+        ln -s "$new_install_dir_name" latest
+    )
+}
+
+function deploy_nz {
+    curl --output-dir "$NZ_DIR" --output "nz" "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz"
+    chmod +x "$NZ_DIR"/nz
+    (
+        cd "$NZ_DIR"/latest
+        ln -s ../nz nz
+    )
+}
+
+function path_needs_config {
+    local latest="$NZ_DIR"/latest
+    if [[ "$PATH" == *"$latest"* ]]; then
+        return 1
+    else
+        return 0
+    fi
 }
 
 function config_path {
-    :
+    echo "config your path!"
+}
+
+function config_path_if_necessary {
+    if path_needs_config; then
+        config_path
+    else
+        :
+    fi
 }
 
 function main {
@@ -117,9 +159,13 @@ function main {
 
     local tar_path="$(fetch_tar)"
 
-    unpack_tar "$tar_path"
+    local new_install_dir_name="$(unpack_tar "$tar_path")"
 
-    config_path
+    config_latest "$new_install_dir_name"
+
+    deploy_nz
+
+    config_path_if_necessary
 }
 
 main
