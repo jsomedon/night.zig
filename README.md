@@ -23,7 +23,7 @@ nz
 
 ```bash
 # `nz` itself will be placed in ~/.night.zig/ too
-curl "" | bash
+curl "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz" | bash
 ```
 
 ### Uninstallation
@@ -35,7 +35,7 @@ rm -rf ~/.night.zig
 
 ### Rant
 
-I just started looking into `zig` yesterday, and I couldn't believe fine folks of `zig` community are manually grabbing the nightly bin without any tool. So here we have this one.
+I just started looking into `zig` yesterday, and I couldn't believe fine folks of `zig` community are manually grabbing the nightly bin without any tools? So here we have this one.
 
 I didn't fully test architecture & os detection logic, only on `x86_64-linux` and `aarch64-macos`.
 
