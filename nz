@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
-VERSION="0.0.0"
+VERSION="0.0.1"
 
 DEP_ERR=100
 
@@ -102,7 +102,6 @@ function fetch_tar {
     echo "$temp_dir/$tar_name"
 }
 
-
 NZ_DIR="$HOME/.night.zig"
 
 function unpack_tar {
@@ -124,18 +123,9 @@ function config_latest {
     )
 }
 
-function deploy_nz {
-    curl --output-dir "$NZ_DIR" --output "nz" "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz"
-    chmod +x "$NZ_DIR"/nz
-    (
-        cd "$NZ_DIR"/latest
-        ln -s ../nz nz
-    )
-}
-
 function path_needs_config {
-    local latest="$NZ_DIR"/latest
-    if [[ "$PATH" == *"$latest"* ]]; then
+    local path=$1
+    if [[ "$PATH" == *"$path"* ]]; then
         return 1
     else
         return 0
@@ -143,29 +133,72 @@ function path_needs_config {
 }
 
 function config_path {
-    echo "config your path!"
+    local path=$1
+    script_echo "Put this in your shell's profile file:"
+    script_echo "export PATH=${path}:\$PATH"
 }
 
 function config_path_if_necessary {
-    if path_needs_config; then
-        config_path
+    local path=$1
+    if path_needs_config "$path"; then
+        config_path "$path"
     else
         :
     fi
 }
 
-function main {
-    check_deps
-
+function deploy_nightly {
     local tar_path="$(fetch_tar)"
 
     local new_install_dir_name="$(unpack_tar "$tar_path")"
 
     config_latest "$new_install_dir_name"
 
-    deploy_nz
-
-    config_path_if_necessary
+    config_path_if_necessary "$NZ_DIR"/latest
 }
 
-main
+function deploy_nz {
+    # I know it's confusing naming
+    # so the full path of `nz` is:
+    # ~/.night.zig/nz/nz
+    local nz_dir="$NZ_DIR"/nz
+    curl --output-dir "$nz_dir" --output "nz" "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz"
+    chmod +x "$nz_dir"/nz
+
+    config_path_if_necessary "$nz_dir"
+}
+
+function show_version {
+    script_echo "version $VERSION"
+}
+
+function show_help {
+    show_version
+    echo ""
+    echo "USAGE:"
+    echo "    nz <SUBCOMMAND>"
+    echo ""
+    echo "SUBCOMMANDS:"
+    echo "    update    Update nightly zig toolchain"
+    echo "    self      Update nz itself"
+    echo "    version   Show nz version info"
+    echo "    help      Show this message"
+}
+
+function main {
+    check_deps
+
+    if [[ $# -eq 0 ]]; then
+        show_help
+    elif [[ $1 == "update" ]]; then
+        deploy_nightly
+    elif [[ $1 == "self" ]]; then
+        deploy_nz
+    elif [[ $1 == "version" ]]; then
+        show_version
+    else
+        show_help
+    fi
+}
+
+main "$@"
