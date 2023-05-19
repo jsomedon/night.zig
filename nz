@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+DEP_ERR=100
+
+#https://stackoverflow.com/a/33297950
+function check_dep {
+    local dep="$1"
+    if command -v "$dep" >/dev/null 2>&1 ; then
+        return 0
+    else
+        return "$DEP_ERR"
+    fi
+}
+
+function script_echo {
+    echo "[night.zig]" "$1"
+}
+
+function check_deps {
+    local deps=("curl" "jq" "tar")
+    for dep in "${deps[@]}"; do
+        if check_dep "$dep"; then
+            :
+        else
+            script_echo "Dependency \"$dep\" is not installed. Exiting now..."
+            exit "$DEP_ERR"
+        fi
+    done
+}
+
+function arch_info {
+    local arch
+    local uname_m
+    uname_m="$(uname -m)"
+    if [[ "$uname_m" == "arm64" ]]; then
+        arch="aarch64"
+    elif [[ "$uname_m" == "amd64" ]]; then
+        arch="x86_64"
+    elif [[ "$uname_m" == "i386" ]]; then
+        arch="x86"
+    elif [[ "$uname_m" == "riscv64" ]]; then
+        arch="riscv64"
+    elif [[ "$uname_m" == "powerpc" ]]; then
+        arch="powerpc"
+    elif [[ "$uname_m" == "ppc64el" ]]; then
+        arch="powerpc64le"
+    else
+        arch="unknown"
+    fi
+    echo "$arch"
+}
+
+# https://stackoverflow.com/a/8597411
+function os_info {
+    local os
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        os="linux"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        os="macos"
+    elif [[ "$OSTYPE" == "cygwin" ]]; then
+        # POSIX compatibility layer and Linux environment emulation for Windows
+        os="windows"
+    elif [[ "$OSTYPE" == "msys" ]]; then
+        # Lightweight shell and GNU utilities compiled for Windows (part of MinGW)
+        os="windows"
+    elif [[ "$OSTYPE" == "win32" ]]; then
+        # I'm not sure this can happen.
+        os="windows"
+    elif [[ "$OSTYPE" == "freebsd"* ]]; then
+        os="unknown"
+    else
+        os="unknown"
+    fi
+    echo "$os"
+}
+
+# works for both macOS and linux
+# https://unix.stackexchange.com/a/84980
+function mktempdir {
+    mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir'
+}
+
+ARCH_OS_ERR=101
+
+function fetch_tar {
+    local arch_os="$(arch_info)-$(os_info)"
+    if [[ "$arch_os" == *"unknown"* ]]; then
+        script_echo "No prebuilt binary for $arch_os. Exiting..."
+        exit "$ARCH_OS_ERR"
+    fi
+    local tar_url="$(curl "https://ziglang.org/download/index.json" | jq -r ".master.\"$arch_os\".tarball")"
+    local tar_name="night.zig.tar"
+    local temp_dir="$(mktempdir)"
+
+    curl --output-dir "$temp_dir" --output "$tar_name" "$tar_url"
+
+    echo "$temp_dir/$tar_name"
+}
+
+function unpack_tar {
+    local tar_path="$1"
+    local install_dir="$HOME/.night.zig"
+    mkdir -p "$install_dir"
+
+    tar -xvzf "$tar_path" -C "$install_dir"
+}
+
+function config_path {
+    :
+}
+
+function main {
+    check_deps
+
+    local tar_path="$(fetch_tar)"
+
+    unpack_tar "$tar_path"
+
+    config_path
+}
+
+main
