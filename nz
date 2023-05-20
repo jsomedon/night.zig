@@ -41,6 +41,8 @@ function arch_info {
         arch="aarch64"
     elif [[ "$uname_m" == "amd64" ]]; then
         arch="x86_64"
+    elif [[ "$uname_m" == "x86_64" ]]; then
+        arch="x86_64"
     elif [[ "$uname_m" == "i386" ]]; then
         arch="x86"
     elif [[ "$uname_m" == "riscv64" ]]; then
