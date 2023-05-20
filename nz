@@ -112,7 +112,7 @@ function unpack_tar {
 
     local containing_dir="$(tar -tf "$tar_path" | head -1)"
     local new_install_dir_name="${containing_dir%/}"
-    tar -xzf "$tar_path" -C "$NZ_DIR"
+    tar -xf "$tar_path" -C "$NZ_DIR"
     echo "$new_install_dir_name"
 }
 
