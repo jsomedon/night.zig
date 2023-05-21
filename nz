@@ -9,7 +9,7 @@ NZ_ARCH_OS="unknown"
 NZ_PLATFORM_ERR=101
 NZ_JSON_URL="https://ziglang.org/download/index.json"
 NZ_DIR="$HOME/.night.zig"
-NZ_VERSION="0.0.8"
+NZ_VERSION="0.0.9"
 NZ_USAGE="
 USAGE:
     nz <SUBCOMMAND>
@@ -34,7 +34,7 @@ function check_dep {
 }
 
 function script_echo {
-    echo "[night.zig]" "$1"
+    printf '[night.zig] %b\n' "$1"
 }
 
 function check_deps {
@@ -42,7 +42,7 @@ function check_deps {
         if check_dep "$dep"; then
             :
         else
-            >&2 script_echo "Dependency \"$dep\" is not installed. Exiting now..."
+            >&2 script_echo "Dependency ${dep} is not installed. Exiting now..."
             exit "$NZ_DEP_ERR"
         fi
     done
@@ -99,7 +99,7 @@ function os_info {
 function validate_platform {
     NZ_ARCH_OS="$(arch_info)-$(os_info)"
     if [[ "$NZ_ARCH_OS" == *"unknown"* ]]; then
-        >&2 script_echo "No prebuilt nightly binary for $NZ_ARCH_OS. Exiting..."
+        >&2 script_echo "No prebuilt nightly binary available for ${NZ_ARCH_OS}. Exiting now..."
         exit "$NZ_PLATFORM_ERR"
     else
         :
@@ -127,47 +127,60 @@ function fetch_tar {
     local tar_name="$(basename "$tar_url")"
     local temp_dir="$(mktempdir)"
 
+    script_echo "Fetching nightly tar ball...\n"
     curl --output-dir "$temp_dir" --output "$tar_name" "$tar_url"
+    script_echo "Fetch completed.\n"
 
     echo "$temp_dir/$tar_name"
 }
 
 function unpack_tar {
     local tar_path="$1"
+
     mkdir -p "$NZ_DIR"
 
     local containing_dir="$(tar -tf "$tar_path" | head -1)"
     local new_install_dir_name="${containing_dir%/}"
+
+    script_echo "Extracting nightly tar ball...\n"
     tar -xf "$tar_path" -C "$NZ_DIR"
+    script_echo "Extraction completed.\n"
+
     echo "$new_install_dir_name"
 }
 
 function config_latest {
+    script_echo "Configuring latest nightly...\n"
     local new_install_dir_name="$1"
     (
         cd "$NZ_DIR"
         rm -f latest
         ln -s "$new_install_dir_name" latest
     )
+    script_echo "Latest nightly configured.\n"
 }
 
 function install_nightly {
     local tar_url="$1"
-    local tar_path="$(fetch_tar "$tar_url")"
 
-    local new_install_dir_name="$(unpack_tar "$tar_path")"
+    local tar_path="$(fetch_tar "$tar_url" | tee /dev/tty | tail -n 1)"
+
+    local new_install_dir_name="$(unpack_tar "$tar_path" | tee /dev/tty | tail -n 1)"
 
     config_latest "$new_install_dir_name"
 }
 
 function update_nightly_if_necessary {
+    script_echo "Checking upstream nightly version...\n"
     local json="$(curl "$NZ_JSON_URL")"
     local upstream_ver="$(jq -n "$json" | jq -r ".master.version")"
-    local tar_url="$(jq -n "$json" | jq -r ".master.\"$NZ_ARCH_OS\".tarball")"
     if nightly_needs_update "$upstream_ver"; then
+        script_echo "Your nighly is outdated, updating now...\n"
+        local tar_url="$(jq -n "$json" | jq -r ".master.\"$NZ_ARCH_OS\".tarball")"
         install_nightly "$tar_url"
+        script_echo "Nightly update completed.\n"
     else
-        script_echo "your zig nightly is already up to date."
+        script_echo "Your nightly is already up to date. Skip updating...\n"
     fi
 }
 
@@ -178,11 +191,14 @@ function deploy_nz {
     local nz_bin_dir="$NZ_DIR"/nz
     mkdir -p "$nz_bin_dir"
     rm -f "$nz_bin_dir"/nz
+    script_echo "Deploying latest nz...\n"
     curl --output-dir "$nz_bin_dir" --output "nz" "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz"
     chmod +x "$nz_bin_dir"/nz
+    script_echo "Latest nz deployed successfully.\n"
 }
 
 function rm_outdated_nightly {
+    script_echo "Cleaning up outdated nightly bins...\n"
     (
         cd "$NZ_DIR"
         local to_be_removed=$(find "." -maxdepth 1 ! -name "nz" ! -name "latest" ! -name "$(basename "$(readlink -f latest)")" ! -name ".")
@@ -191,6 +207,7 @@ function rm_outdated_nightly {
             rm -rf "$tbr"
         done
     )
+    script_echo "Cleanup completed.\n"
 }
 
 function show_version {
@@ -200,7 +217,9 @@ function show_version {
 function deploy_nightly {
     local json="$(curl "$NZ_JSON_URL")"
     local tar_url="$(jq -n "$json" | jq -r ".master.\"$NZ_ARCH_OS\".tarball")"
+    script_echo "Deploying latest nightly...\n"
     install_nightly "$tar_url"
+    script_echo "Latest nightly deployed successfully.\n"
 }
 
 function path_needs_config {
@@ -214,10 +233,8 @@ function path_needs_config {
 
 function config_path {
     local path=$1
-    echo ""
-    script_echo "Put this in your shell's profile file:"
-    script_echo "export PATH=${path}:\$PATH"
-    echo ""
+    script_echo "You should config your \$PATH; put this line in your shell's profile file:"
+    script_echo "export PATH=${path}:\$PATH\n"
 }
 
 function config_path_if_necessary {
@@ -231,7 +248,7 @@ function config_path_if_necessary {
 
 function show_help {
     show_version
-    echo "$NZ_USAGE"
+    printf "%s" "$NZ_USAGE"
 }
 
 function main {
@@ -261,8 +278,10 @@ function main {
         show_version
     elif [[ $1 == "_bootstrap" ]]; then
         # hidden option, only used upon first time install
+        script_echo "Starting fresh installation...\n"
         deploy_nightly
         deploy_nz
+        script_echo "Installation completed.\n"
         config_path_if_necessary "$NZ_DIR"/latest
         config_path_if_necessary "$NZ_DIR"/nz
     else
