@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
-VERSION="0.0.5"
+VERSION="0.0.6"
 
 DEP_ERR=100
 
@@ -157,8 +157,6 @@ function deploy_nightly {
     local new_install_dir_name="$(unpack_tar "$tar_path")"
 
     config_latest "$new_install_dir_name"
-
-    config_path_if_necessary "$NZ_DIR"/latest
 }
 
 function deploy_nz {
@@ -170,8 +168,6 @@ function deploy_nz {
     rm -f "$nz_dir/nz"
     curl --output-dir "$nz_dir" --output "nz" "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz"
     chmod +x "$nz_dir"/nz
-
-    config_path_if_necessary "$nz_dir"
 }
 
 function rm_outdated_nightly {
@@ -228,6 +224,12 @@ function main {
         rm_outdated_nightly
     elif [[ $1 == "version" ]]; then
         show_version
+    elif [[ $1 == "_bootstrap" ]]; then
+        # hidden option, only used upon first time install
+        deploy_nightly
+        deploy_nz
+        config_path_if_necessary "$NZ_DIR"/latest
+        config_path_if_necessary "$NZ_DIR"/nz
     else
         show_help
     fi
