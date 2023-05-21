@@ -3,9 +3,25 @@
 set -e
 set -o pipefail
 
-VERSION="0.0.7"
+NZ_DEPS=("curl" "jq" "basename" "tar" "find" "readlink")
+NZ_DEP_ERR=100
+NZ_ARCH_OS="unknown"
+NZ_PLATFORM_ERR=101
+NZ_JSON_URL="https://ziglang.org/download/index.json"
+NZ_DIR="$HOME/.night.zig"
+NZ_VERSION="0.0.8"
+NZ_USAGE="
+USAGE:
+    nz <SUBCOMMAND>
 
-DEP_ERR=100
+SUBCOMMANDS:
+    update            Update both zig nightly toolchain & nz itself
+    update nightly    Update zig nightly toolchain only
+    update nz         Update nz itself only
+    cleanup           Remove outdated nightly toolchains
+    version           Show nz version info
+    help              Show this message
+"
 
 #https://stackoverflow.com/a/33297950
 function check_dep {
@@ -13,7 +29,7 @@ function check_dep {
     if command -v "$dep" >/dev/null 2>&1 ; then
         return 0
     else
-        return "$DEP_ERR"
+        return "$NZ_DEP_ERR"
     fi
 }
 
@@ -22,13 +38,12 @@ function script_echo {
 }
 
 function check_deps {
-    local deps=("curl" "jq" "basename" "tar" "find" "readlink")
-    for dep in "${deps[@]}"; do
+    for dep in "${NZ_DEPS[@]}"; do
         if check_dep "$dep"; then
             :
         else
-            script_echo "Dependency \"$dep\" is not installed. Exiting now..."
-            exit "$DEP_ERR"
+            >&2 script_echo "Dependency \"$dep\" is not installed. Exiting now..."
+            exit "$NZ_DEP_ERR"
         fi
     done
 }
@@ -81,21 +96,34 @@ function os_info {
     echo "$os"
 }
 
+function validate_platform {
+    NZ_ARCH_OS="$(arch_info)-$(os_info)"
+    if [[ "$NZ_ARCH_OS" == *"unknown"* ]]; then
+        >&2 script_echo "No prebuilt nightly binary for $NZ_ARCH_OS. Exiting..."
+        exit "$NZ_PLATFORM_ERR"
+    else
+        :
+    fi
+}
+
+function nightly_needs_update {
+    local upstream_ver="$1"
+    local latest_dir_name="$(basename "$(readlink -f "$NZ_DIR"/latest)")"
+    if [[ "$latest_dir_name" == *"$upstream_ver"* ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
 # works for both macOS and linux
 # https://unix.stackexchange.com/a/84980
 function mktempdir {
     mktemp -d 2>/dev/null || mktemp -d -t 'tmpdir'
 }
 
-ARCH_OS_ERR=101
-
 function fetch_tar {
-    local arch_os="$(arch_info)-$(os_info)"
-    if [[ "$arch_os" == *"unknown"* ]]; then
-        script_echo "No prebuilt binary for $arch_os. Exiting..."
-        exit "$ARCH_OS_ERR"
-    fi
-    local tar_url="$(curl "https://ziglang.org/download/index.json" | jq -r ".master.\"$arch_os\".tarball")"
+    local tar_url="$1"
     local tar_name="$(basename "$tar_url")"
     local temp_dir="$(mktempdir)"
 
@@ -103,8 +131,6 @@ function fetch_tar {
 
     echo "$temp_dir/$tar_name"
 }
-
-NZ_DIR="$HOME/.night.zig"
 
 function unpack_tar {
     local tar_path="$1"
@@ -123,6 +149,58 @@ function config_latest {
         rm -f latest
         ln -s "$new_install_dir_name" latest
     )
+}
+
+function install_nightly {
+    local tar_url="$1"
+    local tar_path="$(fetch_tar "$tar_url")"
+
+    local new_install_dir_name="$(unpack_tar "$tar_path")"
+
+    config_latest "$new_install_dir_name"
+}
+
+function update_nightly_if_necessary {
+    local json="$(curl "$NZ_JSON_URL")"
+    local upstream_ver="$(jq -n "$json" | jq -r ".master.version")"
+    local tar_url="$(jq -n "$json" | jq -r ".master.\"$NZ_ARCH_OS\".tarball")"
+    if nightly_needs_update "$upstream_ver"; then
+        install_nightly "$tar_url"
+    else
+        script_echo "your zig nightly is already up to date."
+    fi
+}
+
+function deploy_nz {
+    # I know it's confusing naming
+    # so the full path of `nz` is:
+    # ~/.night.zig/nz/nz
+    local nz_bin_dir="$NZ_DIR"/nz
+    mkdir -p "$nz_bin_dir"
+    rm -f "$nz_bin_dir"/nz
+    curl --output-dir "$nz_bin_dir" --output "nz" "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz"
+    chmod +x "$nz_bin_dir"/nz
+}
+
+function rm_outdated_nightly {
+    (
+        cd "$NZ_DIR"
+        local to_be_removed=$(find "." -maxdepth 1 ! -name "nz" ! -name "latest" ! -name "$(basename "$(readlink -f latest)")" ! -name ".")
+        for tbr in $to_be_removed; do
+            echo "removing ${NZ_DIR}/$(basename "$tbr")..."
+            rm -rf "$tbr"
+        done
+    )
+}
+
+function show_version {
+    script_echo "version $NZ_VERSION"
+}
+
+function deploy_nightly {
+    local json="$(curl "$NZ_JSON_URL")"
+    local tar_url="$(jq -n "$json" | jq -r ".master.\"$NZ_ARCH_OS\".tarball")"
+    install_nightly "$tar_url"
 }
 
 function path_needs_config {
@@ -151,67 +229,24 @@ function config_path_if_necessary {
     fi
 }
 
-function deploy_nightly {
-    local tar_path="$(fetch_tar)"
-
-    local new_install_dir_name="$(unpack_tar "$tar_path")"
-
-    config_latest "$new_install_dir_name"
-}
-
-function deploy_nz {
-    # I know it's confusing naming
-    # so the full path of `nz` is:
-    # ~/.night.zig/nz/nz
-    local nz_dir="$NZ_DIR"/nz
-    mkdir -p "$nz_dir"
-    rm -f "$nz_dir/nz"
-    curl --output-dir "$nz_dir" --output "nz" "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz"
-    chmod +x "$nz_dir"/nz
-}
-
-function rm_outdated_nightly {
-    (
-        cd "$HOME/.night.zig"
-        local to_be_removed=$(find "." -maxdepth 1 ! -name "nz" ! -name "latest" ! -name "$(basename "$(readlink -f latest)")" ! -name ".")
-        for tbr in $to_be_removed; do
-            echo "removing $HOME/.night.zig/$(basename "$tbr")..."
-            rm -rf "$tbr"
-        done
-    )
-}
-
-function show_version {
-    script_echo "version $VERSION"
-}
-
 function show_help {
     show_version
-    echo ""
-    echo "USAGE:"
-    echo "    nz <SUBCOMMAND>"
-    echo ""
-    echo "SUBCOMMANDS:"
-    echo "    update            Update both zig nightly toolchain & nz itself"
-    echo "    update nightly    Update zig nightly toolchain only"
-    echo "    update nz         Update nz itself only"
-    echo "    cleanup           Remove outdated nightly toolchains"
-    echo "    version           Show nz version info"
-    echo "    help              Show this message"
+    echo "$NZ_USAGE"
 }
 
 function main {
     check_deps
+    validate_platform
 
     if [[ $# -eq 0 ]]; then
         show_help
     elif [[ $1 == "update" ]]; then
         if [[ $# -eq 1 ]]; then
-            deploy_nightly
+            update_nightly_if_necessary
             deploy_nz
         elif [[ $# -eq 2 ]]; then
             if [[ $2 == "nightly" ]]; then
-                deploy_nightly
+                update_nightly_if_necessary
             elif [[ $2 == "nz" ]]; then
                 deploy_nz
             else
