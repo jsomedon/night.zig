@@ -22,6 +22,10 @@ SUBCOMMANDS:
 * `jq`
 * `basename`
 * `tar`
+* `find`
+* `readlink`
+
+You will mostly have everything preinstalled except `jq`.
 
 ### Installation
 

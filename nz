@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
-VERSION="0.0.3"
+VERSION="0.0.4"
 
 DEP_ERR=100
 
@@ -22,7 +22,7 @@ function script_echo {
 }
 
 function check_deps {
-    local deps=("curl" "jq" "basename" "tar")
+    local deps=("curl" "jq" "basename" "tar" "find" "readlink")
     for dep in "${deps[@]}"; do
         if check_dep "$dep"; then
             :
