@@ -10,6 +10,7 @@ USAGE:
 
 SUBCOMMANDS:
     update    Update zig nightly toolchain & nz itself
+    cleanup   Remove outdated nightly toolchains
     version   Show nz version info
     help      Show this message
 ```

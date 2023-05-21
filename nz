@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
-VERSION="0.0.2"
+VERSION="0.0.3"
 
 DEP_ERR=100
 
@@ -173,6 +173,17 @@ function deploy_nz {
     config_path_if_necessary "$nz_dir"
 }
 
+function rm_outdated_nightly {
+    (
+        cd "$HOME/.night.zig"
+        local to_be_removed=$(find "." -maxdepth 1 ! -name "nz" ! -name "latest" ! -name "$(basename "$(readlink -f latest)")" ! -name ".")
+        for tbr in $to_be_removed; do
+            echo "removing $HOME/.night.zig/$(basename "$tbr")..."
+            rm -rf "$tbr"
+        done
+    )
+}
+
 function show_version {
     script_echo "version $VERSION"
 }
@@ -185,6 +196,7 @@ function show_help {
     echo ""
     echo "SUBCOMMANDS:"
     echo "    update    Update zig nightly toolchain & nz itself"
+    echo "    cleanup   Remove outdated nightly toolchains"
     echo "    version   Show nz version info"
     echo "    help      Show this message"
 }
@@ -197,6 +209,8 @@ function main {
     elif [[ $1 == "update" ]]; then
         deploy_nightly
         deploy_nz
+    elif [[ $1 == "cleanup" ]]; then
+        rm_outdated_nightly
     elif [[ $1 == "version" ]]; then
         show_version
     else
