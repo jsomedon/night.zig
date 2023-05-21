@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
-VERSION="0.0.4"
+VERSION="0.0.5"
 
 DEP_ERR=100
 
@@ -167,6 +167,7 @@ function deploy_nz {
     # ~/.night.zig/nz/nz
     local nz_dir="$NZ_DIR"/nz
     mkdir -p "$nz_dir"
+    rm -f "$nz_dir/nz"
     curl --output-dir "$nz_dir" --output "nz" "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz"
     chmod +x "$nz_dir"/nz
 
@@ -195,10 +196,12 @@ function show_help {
     echo "    nz <SUBCOMMAND>"
     echo ""
     echo "SUBCOMMANDS:"
-    echo "    update    Update zig nightly toolchain & nz itself"
-    echo "    cleanup   Remove outdated nightly toolchains"
-    echo "    version   Show nz version info"
-    echo "    help      Show this message"
+    echo "    update            Update both zig nightly toolchain & nz itself"
+    echo "    update nightly    Update zig nightly toolchain only"
+    echo "    update nz         Update nz itself only"
+    echo "    cleanup           Remove outdated nightly toolchains"
+    echo "    version           Show nz version info"
+    echo "    help              Show this message"
 }
 
 function main {
@@ -207,8 +210,20 @@ function main {
     if [[ $# -eq 0 ]]; then
         show_help
     elif [[ $1 == "update" ]]; then
-        deploy_nightly
-        deploy_nz
+        if [[ $# -eq 1 ]]; then
+            deploy_nightly
+            deploy_nz
+        elif [[ $# -eq 2 ]]; then
+            if [[ $2 == "nightly" ]]; then
+                deploy_nightly
+            elif [[ $2 == "nz" ]]; then
+                deploy_nz
+            else
+                show_help
+            fi
+        else
+            show_help
+        fi
     elif [[ $1 == "cleanup" ]]; then
         rm_outdated_nightly
     elif [[ $1 == "version" ]]; then

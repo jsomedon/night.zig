@@ -9,10 +9,12 @@ USAGE:
     nz <SUBCOMMAND>
 
 SUBCOMMANDS:
-    update    Update zig nightly toolchain & nz itself
-    cleanup   Remove outdated nightly toolchains
-    version   Show nz version info
-    help      Show this message
+    update            Update both zig nightly toolchain & nz itself
+    update nightly    Update zig nightly toolchain only
+    update nz         Update nz itself only
+    cleanup           Remove outdated nightly toolchains
+    version           Show nz version info
+    help              Show this message
 ```
 
 ### Dependencies
