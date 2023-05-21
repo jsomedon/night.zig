@@ -3,7 +3,7 @@
 set -e
 set -o pipefail
 
-VERSION="0.0.6"
+VERSION="0.0.7"
 
 DEP_ERR=100
 

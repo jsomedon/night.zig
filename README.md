@@ -34,7 +34,7 @@ You will mostly have everything preinstalled except `jq`.
 Run this in terminal:
 
 ```bash
-curl "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz" | bash -s -- update
+curl "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz" | bash -s -- _bootstrap
 ```
 
 ### Uninstallation
