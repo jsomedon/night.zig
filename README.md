@@ -37,6 +37,33 @@ Run this in terminal:
 curl "https://raw.githubusercontent.com/jsomedon/night.zig/main/nz" | bash -s -- _bootstrap
 ```
 
+You can also optionally install shell completion scripts, you can find them under `completions` folder. For now only bash completion script is implemented.
+
+##### Bash (using bash-completion on Linux)
+
+On Linux, completion scripts for `bash-completion` are commonly stored in `/etc/bash_completion.d/` for system-wide commands, but can be stored in `~/.local/share/bash-completion/completions` for user-specific commands. Install `bash-completion` package with your distributions' package manager first -- packages' name might vary, then:
+
+```bash
+mkdir -p ~/.local/share/bash-completion/completions
+mv nz.comp.bash ~/.local/share/bash-completion/completions/
+```
+
+You may have to log out and log back in to your shell session for the changes to take effect.
+
+##### Bash (using bash-completion on macOS/Homebrew)
+
+On macOS, homebrew stores `bash-completion` scripts within the homebrew directory. Install `bash-completion` brew formula, then put `nz.comp.bash` into `$(brew --prefix)/etc/bash_completion.d`:
+
+```bash
+brew install bash-completion # or bash-completion@2 if your bash version is 4.2+
+mkdir -p $(brew --prefix)/etc/bash_completion.d
+mv nz.comp.bash  $(brew --prefix)/etc/bash_completion.d/
+```
+
+##### Bash (not using bash-completion)
+
+For quick installation, you can simply download the `nz.comp.bash` script somewhere on your machine, then `source` the script in your bash profile file.
+
 ### Uninstallation
 
 Both `nz` and nightly bins are installed in `~/.night.zig/`, so just remove that folder:
@@ -44,6 +71,8 @@ Both `nz` and nightly bins are installed in `~/.night.zig/`, so just remove that
 ```bash
 rm -rf ~/.night.zig
 ```
+
+If you installed shell completion scripts, remove them from their respective dirs as well.
 
 ### Rant
 
