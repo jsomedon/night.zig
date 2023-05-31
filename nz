@@ -9,7 +9,7 @@ NZ_ARCH_OS="unknown"
 NZ_PLATFORM_ERR=101
 NZ_JSON_URL="https://ziglang.org/download/index.json"
 NZ_DIR="$HOME/.night.zig"
-NZ_VERSION="0.1.1"
+NZ_VERSION="0.2.0"
 NZ_USAGE="
 USAGE:
     nz <SUBCOMMAND>
