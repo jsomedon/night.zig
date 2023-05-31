@@ -233,8 +233,23 @@ function path_needs_config {
 
 function config_path {
     local path=$1
-    script_echo "You should config your \$PATH; put this line in your shell's profile file:"
-    script_echo "export PATH=${path}:\$PATH\n"
+    script_echo "Adding ${path} to \$PATH...\n"
+    # script_echo "You should config your \$PATH; put this line in your shell's profile file:"
+    # script_echo "export PATH=${path}:\$PATH\n"
+    local os="$(os_info)"
+    local bash_profile
+    if [[ "$os" == "macos" ]];then
+        bash_profile="${HOME}/.bash_profile"
+    elif [[ "$os" == "linux" ]];then
+        bash_profile="${HOME}/.bashrc"
+    else
+        script_echo "\$PATH auto configuration is not supported on this system: ${os}"
+        script_echo "You should manually configure your \$PATH; put this line in your shell's profile file:"
+        script_echo "export PATH=${path}:\$PATH\n"
+        return 0
+    fi
+    echo "export PATH=${path}:\$PATH" >> "$bash_profile"
+    script_echo "Added ${path} to \$PATH.\n"
 }
 
 function config_path_if_necessary {
